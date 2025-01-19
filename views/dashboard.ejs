@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Admin</title>
+    <link
+        href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css"
+        rel="stylesheet">
+    <link rel="stylesheet"
+        href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+    <link rel="stylesheet"
+        href="https://cdn.datatables.net/2.2.1/css/dataTables.dataTables.css" />
+    <style>
+        #map {
+            height: 600px;
+            margin-bottom: 2rem;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-light bg-light">
+        <a class="navbar-brand" href="#">Geolocation Manager App</a>
+        <button class="navbar-toggler" type="button" data-toggle="collapse"
+            data-target="#navbarNav" aria-controls="navbarNav"
+            aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNav">
+            <ul class="navbar-nav">
+                <li>
+                    <a class="nav-link" href="javascript:void(0)"
+                        id="logout">Logout</a>
+                </li>
+            </ul>
+        </div>
+    </nav>
+    <div class="container mt-5">
+        <h3 class="display-4">Dashboard Admin</h3>
+        <h4 id="nama"></h4>
+        <div id="map"></div>
+        <div class="mb-3">
+            <button id="addPlaceBtn" class="btn btn-primary">Add Place</button>
+            <input type="file" id="excelFile" accept=".xlsx, .xls"
+                class="form-control d-inline-block w-auto ml-2" />
+            <button id="importExcelBtn" class="btn btn-secondary ml-2">Import
+                Excel</button>
+        </div>
+        <table id="placesTable">
+            <thead>
+                <tr>
+                    <th>Nama</th>
+                    <th>Aksi</th>
+                </tr>
+            </thead>
+            <tbody id="placesTableBody">
+            </tbody>
+        </table>
+        <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+        <script src="https://cdn.datatables.net/2.2.1/js/dataTables.js">
+        </script>
+        <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+        <script>
+            document.addEventListener('DOMContentLoaded', async () => {
+                const data = await fetchProtectedData(
+                    '/dashboard-page');
+                document.getElementById('nama').innerText =
+                    "Selamat Datang, " + data.name;
+                document.getElementById('logout').addEventListener(
+                    'click', async () => {
+                        fetchProtectedPost('/logout', {
+                            credentials: 'include'
+                        }).then(data => {
+                            localStorage.removeItem('accessToken');
+                            alert(data.message);
+                            window.location.href = "/login";
+                        }).catch(error => {
+                            console.error(
+                                'Error adding place:',
+                                error
+                            );
+                            alert(
+                                'Failed to add place. Please try again.',
+                                error.message
+                            );
+                        });
+                        location.reload();
+                    });
+                const map = L.map('map').setView([-6.9147,
+                        107.6098
+                    ],
+                    11);
+                L.tileLayer(
+                    'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                        maxZoom: 19,
+                    }).addTo(map);
+                const markers = [];
+                function addMarker(place) {
+                    const marker = L.marker([place.lat, place.lng])
+                        .addTo(map);
+                    marker.bindPopup(`<b>${place.name}</b>`, {
+                            autoPan: false
+                        })
+                        .openPopup();
+                    markers.push({
+                        name: place.name,
+                        coords: [place.lat, place.lng]
+                    });
+                    addPlaceToTable(place);
+                }
+                function addPlaceToTable(place) {
+                    const tableBody = document.getElementById(
+                        'placesTableBody');
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${place.name}</td>
+                        <td>
+                            <button class="btn btn-primary btn-sm edit-btn" data-name="${place.name}" data-lat="${place.lat}" data-lng="${place.lng}">Edit</button>
+                            <button class="btn btn-danger btn-sm delete-btn" data-name="${place.name}">Hapus</button>
+                        </td>
+                    `;
+                    tableBody.appendChild(row);
+                }
+                function addPlace() {
+                    const name = prompt("Enter place name:");
+                    const lat = parseFloat(prompt(
+                        "Enter latitude:"));
+                    const lng = parseFloat(prompt(
+                        "Enter longitude:"));
+                    fetchProtectedPost('/add-place', {
+                        name: name,
+                        lat: lat,
+                        lng: lng,
+                    }).then(data => {
+                        alert(data.message);
+                        location.reload();
+                    }).catch(error => {
+                        console.error(
+                            'Error adding place:', error
+                        );
+                        alert(
+                            'Failed to add place. Please try again.',
+                            error.message
+                        );
+                    });
+                    location.reload();
+                }
+                function importExcel() {
+                    const fileInput = document.getElementById(
+                        'excelFile');
+                    const file = fileInput.files[0];
+                    const formData = new FormData();
+                    formData.append('file', file);
+                    fetchProtectedExcel('/excel', formData)
+                        .then(data => {
+                            alert(data.message);
+                            location.reload();
+                        }).catch(error => {
+                            console.error(
+                                'Error importing Excel:',
+                                error
+                            );
+                            alert(
+                                'Failed to import Excel. Please try again.',
+                                error.message
+                            );
+                        });
+                }
+                document.getElementById('placesTableBody')
+                    .addEventListener('click', (event) => {
+                        if (event.target.classList.contains(
+                                'edit-btn')) {
+                            const name = event.target
+                                .getAttribute('data-name');
+                            const lat = parseFloat(event.target
+                                .getAttribute('data-lat'));
+                            const lng = parseFloat(event.target
+                                .getAttribute('data-lng'));
+                            const place = {
+                                name,
+                                lat,
+                                lng
+                            };
+                            editPlace(place);
+                        }
+                    });
+                function editPlace(place) {
+                    if (!place || !place.name || !place.lat || !
+                        place.lng) {
+                        alert("Invalid place data!");
+                        return;
+                    }
+                    const newLat = parseFloat(prompt(
+                        "Enter new latitude:", place.lat
+                    ));
+                    const newLng = parseFloat(prompt(
+                        "Enter new longitude:", place
+                        .lng));
+                    if (isNaN(newLat) || isNaN(newLng)) {
+                        alert("Invalid latitude or longitude!");
+                        return;
+                    }
+                    const data = {
+                        name: place.name,
+                        lat: newLat,
+                        lng: newLng
+                    };
+                    console.log('Data to be sent:', data);
+                    fetchProtectedPut(
+                        "/edit-place", data).then(data => {
+                        alert(data.message);
+                        location.reload();
+                    }).catch(error => {
+                        console.error(
+                            'Error editing place:',
+                            error);
+                        alert(
+                            'Failed to edit place. Please try again.',
+                            error.message
+                        );
+                    });
+                }
+                document.getElementById('placesTableBody')
+                    .addEventListener('click', (event) => {
+                        if (event.target.classList.contains(
+                                'delete-btn')) {
+                            const placeName = event.target
+                                .getAttribute('data-name');
+                            deletePlace(placeName);
+                        }
+                    });
+                function deletePlace(placeName) {
+                    const confirmDelete = confirm(
+                        `Are you sure you want to delete ${placeName}?`
+                    );
+                    if (!confirmDelete) return;
+                    fetchProtectedDelete(
+                        '/delete-place', {
+                            name: placeName
+                        }
+                    ).then(data => {
+                        alert(data.message);
+                        location.reload();
+                    }).catch(error => {
+                        console.error(
+                            'Error deleting place:',
+                            error
+                        );
+                        alert(
+                            'Failed to delete place. Please try again.',
+                            error.message
+                        );
+                    });
+                }
+                document.getElementById('addPlaceBtn')
+                    .addEventListener('click', addPlace);
+                document.getElementById('importExcelBtn')
+                    .addEventListener('click', importExcel);
+                fetchProtectedData(
+                    '/places').then(data => {
+                    data.forEach(place => addMarker(place));
+                    $('#placesTable').DataTable();
+                }).catch(error => {
+                    console.error('Error fetching places:',
+                        error);
+                    alert(
+                        'Failed to load places. Please try again.'
+                    );
+                });
+            })
+        </script>
+    </div>
+    <script
+        src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.4/dist/umd/popper.min.js">
+    </script>
+    <script
+        src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js">
+    </script>
+    <script src="/js/auth.js"></script>
+</body>
+</html>

@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login Page</title>
+    <link rel="stylesheet"
+        href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css">
+</head>
+<body>
+    <h2 class="text-center mt-5">Login</h2>
+    <form action="/login" method="POST" class="col-md-4 offset-md-4 mt-5"
+        id="loginForm">
+        <div class="form-group">
+            <label for="username">Username:</label>
+            <input type="text" id="username" name="username"
+                class="form-control" required>
+        </div>
+        <div class="form-group">
+            <label for="password">Password:</label>
+            <input type="password" id="password" name="password"
+                class="form-control" required>
+        </div>
+        <div class="text-center">
+            <button type="submit" class="btn btn-primary">Login</button>
+        </div>
+    </form>
+    <script>
+        document.getElementById('loginForm').addEventListener('submit', async (
+            e) => {
+            e.preventDefault();
+            const username = document.getElementById('username')
+                .value;
+            const password = document.getElementById('password')
+                .value;
+            const response = await fetch('/login', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    username,
+                    password
+                })
+            });
+            if (response.ok) {
+                const data = await response.json();
+                localStorage.setItem('accessToken', data
+                    .accessToken);
+                window.location.href = "/dashboard";
+            } else {
+                try {
+                    const errorData = await response.json();
+                    alert(errorData.message || 'Login failed');
+                } catch (error) {
+                    alert('Terjadi kesalahan. Silakan coba lagi.');
+                }
+            }
+        });
+    </script>
+</body>
+</html>
