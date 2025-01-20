@@ -31,7 +31,7 @@ clone repository ini terlebih dahulu
   git clone https://github.com/akbarst3/sig-app.git
 ```
 
-## Run Project Locally
+### Run Project Locally
 
 Install dependensi
 ```bash
@@ -51,7 +51,7 @@ Jalankan user seeder database, karena proyek ini tidak menyediakan fitur registr
 ```bash
   node database/seeder/userSeeder.js
 ```
-## Run with Docker Containerize
+### Run with Docker Containerize
 Jalankan file docker compose
 ```bash
   docker compose up --build
